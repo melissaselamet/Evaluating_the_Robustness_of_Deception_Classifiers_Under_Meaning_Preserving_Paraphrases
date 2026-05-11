@@ -3,7 +3,7 @@ import pandas as pd
 import time
 from bert_score import BERTScorer
 
-# configurations
+# Configurations
 ollama_url     = "http://localhost:11434/api/generate"
 model_name     = "llama3.1:8b"
 temperature    = 0.7
@@ -47,34 +47,34 @@ def generate_paraphrase(review: str, prompt: str) -> str:
         print(f"error: {response.status_code} - {response.text}")
         return ""
 
-# Load Roberta Once at Startup so it isn't Reloaded on Every Call
+# Load Roberta once at startup
 scorer = BERTScorer(lang="en", device="mps", verbose=False)
 
-# function to compute bertscore between original and paraphrase
+# Function to compute bertscore between original and paraphrase
 def compute_bertscore(original: str, paraphrase: str) -> float:
     _, _, F1 = scorer.score([paraphrase], [original])
     return F1.item()
 
 
-# Function to Generate and Validate a Paraphrase with BERTscore Quality Check
+# Function to generate a Paraphrase with BERTscore Quality Check
 def generate_valid_paraphrase(review: str, prompt: str, condition: str):
     for attempt in range(1, max_attempts + 1):
         paraphrase = generate_paraphrase(review, prompt)
         bs = compute_bertscore(review, paraphrase)
 
-        print(f"  [{condition}] attempt {attempt} | bertscore: {bs:.4f}", end="")
+        print(f"  [{condition}] attempt {attempt} -- bertscore: {bs:.4f}", end="")
 
         if bs >= bert_threshold:
-            print(" ✓")
+            print("within treshold")
             return paraphrase, bs, attempt
         else:
-            print(f" ✗ (below {bert_threshold}, regenerating...)")
+            print(f"below {bert_threshold}. regenerating.")
 
     # If all Attempts Fail, Keep the Last One and Flag it
-    print(f"  [{condition}] warning: all attempts below threshold, keep the last valid result.")
+    print(f"  [{condition}]: all attempts below threshold, keep the last valid result.")
     return paraphrase, bs, max_attempts
 
-# Load the Test Set
+# Load the test set
 test_df = pd.read_csv("data/test_set.csv")
 print(f"number of loaded reviews from test set: {len(test_df)}")
 
@@ -102,7 +102,7 @@ for i, row in test_df.iterrows():
     strategic_bertscores.append(s_bs)
     strategic_attempts.append(s_att)
 
-    # Small Delay to Avoid Overwhelming Ollama
+    # Small Delay to not Overwhelm Ollama
     time.sleep(0.5)
 
 # Save the Results
