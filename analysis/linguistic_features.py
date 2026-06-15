@@ -1,110 +1,126 @@
 import pandas as pd
-import spacy
-import nltk
-from nltk.corpus import opinion_lexicon
+import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import classification_report
-import numpy as np
+from scipy.stats import norm
 
-nltk.download("opinion_lexicon")
-nltk.download("punkt")
 
-# Load spacy model
-nlp = spacy.load("en_core_web_sm")
+theory_features = [
+    "ppron", "i", "we", "socrefs",
+    "Authentic", "WPS", "focuspast", "visual", "auditory", "feeling",
+    "Analytic", "WC", "BigWords",
+    "number", "motion", "space", "time",
+    "Tone", "tone_pos", "tone_neg",
+    "cogproc", "insight", "cause",
+]
 
-# Load positive/negative word lists from nltk
-negative_words = set(opinion_lexicon.negative())
+## Load LIWC outputs for each condition
+orig_liwc   = pd.read_csv("../data/liwc_original.csv")[theory_features]
+ns_8b_liwc  = pd.read_csv("../data/liwc_ns_8b.csv")[theory_features]
+s_8b_liwc   = pd.read_csv("../data/liwc_s_8b.csv")[theory_features]
+ns_70b_liwc = pd.read_csv("../data/liwc_ns_70b.csv")[theory_features]
+s_70b_liwc  = pd.read_csv("../data/liwc_s_70b.csv")[theory_features]
 
-# Feature extraction function
-def extract_features(text: str) -> dict:
-    doc = nlp(text)
-    words = [token.text.lower() for token in doc if token.is_alpha]
-    sentences = list(doc.sents)
-
-    # Personal involvement: the first-person pronouns
-    first_person = ["i", "me", "my", "myself", "mine", "we", "our", "us"]
-    pronoun_count = sum(1 for w in words if w in first_person)
-    pronoun_rate  = pronoun_count / len(words) if words else 0
-
-    # Negative emotion words
-    neg_count = sum(1 for w in words if w in negative_words)
-    neg_rate  = neg_count / len(words) if words else 0
-
-    # Sentence length
-    avg_sent_length = np.mean([len(sent.text.split()) for sent in sentences]) if sentences else 0
-
-    # Type-token ratio (lexical diversity)
-    ttr = len(set(words)) / len(words) if words else 0
-
-    # Pos distributions
-    pos_counts = {}
-    for token in doc:
-        pos_counts[token.pos_] = pos_counts.get(token.pos_, 0) + 1
-    total_tokens = len(doc)
-    noun_rate  = pos_counts.get("NOUN", 0)  / total_tokens if total_tokens else 0
-    verb_rate  = pos_counts.get("VERB", 0)  / total_tokens if total_tokens else 0
-    adj_rate   = pos_counts.get("ADJ", 0)   / total_tokens if total_tokens else 0
-    adv_rate   = pos_counts.get("ADV", 0)   / total_tokens if total_tokens else 0
-
-    return {
-        "pronoun_rate":     pronoun_rate,
-        "neg_rate":         neg_rate,
-        "avg_sent_length":  avg_sent_length,
-        "ttr":              ttr,
-        "noun_rate":        noun_rate,
-        "verb_rate":        verb_rate,
-        "adj_rate":         adj_rate,
-        "adv_rate":         adv_rate,
-    }
-
-## Load the previous resultts
+## Load results for flip indicators and metadata
 df = pd.read_csv("../data/results.csv")
-df["flip_non_strategic"] = (df["pred_original"] != df["pred_non_strategic"]).astype(int)
-df["flip_strategic"]     = (df["pred_original"] != df["pred_strategic"]).astype(int)
+df["flip_ns_8b"]  = (df["pred_original"] != df["pred_non_strategic_8b"]).astype(int)
+df["flip_s_8b"]   = (df["pred_original"] != df["pred_strategic_8b"]).astype(int)
+df["flip_ns_70b"] = (df["pred_original"] != df["pred_non_strategic_70b"]).astype(int)
+df["flip_s_70b"]  = (df["pred_original"] != df["pred_strategic_70b"]).astype(int)
 
-## Extract features
-orig_features = pd.DataFrame([extract_features(t) for t in df["text"]])
+## Compute feature differences (paraphrase - original)
+# fillna(0) handles cases where LIWC could not compute a score (e.g. very short texts)
+ns_8b_diff  = (ns_8b_liwc  - orig_liwc).fillna(0)
+s_8b_diff   = (s_8b_liwc   - orig_liwc).fillna(0)
+ns_70b_diff = (ns_70b_liwc - orig_liwc).fillna(0)
+s_70b_diff  = (s_70b_liwc  - orig_liwc).fillna(0)
 
-ns_features = pd.DataFrame([extract_features(t) for t in df["non_strategic"]])
+ns_8b_diff.columns  = [f"ns8b_diff_{c}"  for c in ns_8b_diff.columns]
+s_8b_diff.columns   = [f"s8b_diff_{c}"   for c in s_8b_diff.columns]
+ns_70b_diff.columns = [f"ns70b_diff_{c}" for c in ns_70b_diff.columns]
+s_70b_diff.columns  = [f"s70b_diff_{c}"  for c in s_70b_diff.columns]
 
-s_features = pd.DataFrame([extract_features(t) for t in df["strategic"]])
+## Print mean feature differences split by true label
+for label_val, label_name in [(0, "truthful"), (1, "deceptive")]:
+    idx = df["label"] == label_val
+    print(f"\n=== mean feature differences for {label_name} reviews ===")
 
-## Compute feature differences
-ns_diff = ns_features - orig_features
-s_diff  = s_features  - orig_features
+    print(f"\n  8B non-strategic vs original:")
+    for col in ns_8b_diff.columns:
+        print(f"    {col}: {ns_8b_diff[idx][col].mean():.4f}")
 
-ns_diff.columns = [f"ns_diff_{c}" for c in ns_diff.columns]
-s_diff.columns  = [f"s_diff_{c}"  for c in s_diff.columns]
+    print(f"\n  8B strategic vs original:")
+    for col in s_8b_diff.columns:
+        print(f"    {col}: {s_8b_diff[idx][col].mean():.4f}")
 
-# Print mean feature differences between non-strategic vs original
-print("mean feature differences (non-strategic vs original):")
-for col in ns_diff.columns:
-    print(f"  {col}: {ns_diff[col].mean():.4f}")
+    print(f"\n  70B non-strategic vs original:")
+    for col in ns_70b_diff.columns:
+        print(f"    {col}: {ns_70b_diff[idx][col].mean():.4f}")
 
-print("mean feature differences (strategic vs original):")
-for col in s_diff.columns:
-    print(f"  {col}: {s_diff[col].mean():.4f}")
+    print(f"\n  70B strategic vs original:")
+    for col in s_70b_diff.columns:
+        print(f"    {col}: {s_70b_diff[idx][col].mean():.4f}")
 
-## Logistic regression
-print("logistic regression: (non-strategic flips)")
-X_ns = StandardScaler().fit_transform(ns_diff)
-y_ns = df["flip_non_strategic"]
-lr_ns = LogisticRegression(max_iter=1000)
-lr_ns.fit(X_ns, y_ns)
-coef_ns = pd.Series(lr_ns.coef_[0], index=ns_diff.columns).sort_values(key=abs, ascending=False)
-print("top features that predict a flip:")
-print(coef_ns.head(5))
+## Logistic regression for each condition
 
-print("logistic regression: (strategic flips)")
-X_s = StandardScaler().fit_transform(s_diff)
-y_s = df["flip_strategic"]
-lr_s = LogisticRegression(max_iter=1000)
-lr_s.fit(X_s, y_s)
-coef_s = pd.Series(lr_s.coef_[0], index=s_diff.columns).sort_values(key=abs, ascending=False)
-print("top features that predict a flip:")
-print(coef_s.head(5))
+def report_logistic_regression(X, y, feature_names, condition_name):
+    """Fit logistic regression and report results in APA 7 format.
+    B = unstandardized coefficient, SE = standard error,
+    Wald = (B/SE)^2, p = two-tailed p-value, OR = odds ratio (exp(B))."""
+    lr = LogisticRegression(max_iter=1000, random_state=11)
+    lr.fit(X, y)
+
+    # Compute standard errors via weighted covariance matrix
+    p_hat = lr.predict_proba(X)[:, 1]
+    W = p_hat * (1 - p_hat)
+    X_weighted = X * W[:, np.newaxis]
+    cov_matrix = np.linalg.pinv(X_weighted.T @ X)
+    se = np.sqrt(np.diag(cov_matrix))
+
+    coef      = lr.coef_[0]
+    wald      = (coef / se) ** 2
+    p_values  = (1 - norm.cdf(np.abs(coef / se))) * 2
+    or_values = np.exp(coef)
+
+    results = pd.DataFrame({
+        "feature": feature_names,
+        "B":    coef,
+        "SE":   se,
+        "Wald": wald,
+        "p":    p_values,
+        "OR":   or_values,
+    }).sort_values("B", key=abs, ascending=False).head(5)
+
+    print(f"\n  {condition_name}:")
+    print(f"  {'Feature':<25} {'B':>7} {'SE':>7} {'Wald':>8} {'p':>7} {'OR':>7}")
+    for _, row in results.iterrows():
+        print(f"  {row['feature']:<25} {row['B']:>7.3f} {row['SE']:>7.3f} "
+              f"{row['Wald']:>8.3f} {row['p']:>7.3f} {row['OR']:>7.3f}")
+
+print("\n\nlogistic regression results:")
+print("outcome variable: label flip (1 = flip, 0 = no flip)")
+print("predictors: standardized LIWC-22 feature differences (paraphrase minus original)")
+
+report_logistic_regression(
+    StandardScaler().fit_transform(ns_8b_diff), df["flip_ns_8b"],
+    ns_8b_diff.columns.tolist(), "8B non-strategic"
+)
+report_logistic_regression(
+    StandardScaler().fit_transform(s_8b_diff), df["flip_s_8b"],
+    s_8b_diff.columns.tolist(), "8B strategic"
+)
+report_logistic_regression(
+    StandardScaler().fit_transform(ns_70b_diff), df["flip_ns_70b"],
+    ns_70b_diff.columns.tolist(), "70B non-strategic"
+)
+report_logistic_regression(
+    StandardScaler().fit_transform(s_70b_diff), df["flip_s_70b"],
+    s_70b_diff.columns.tolist(), "70B strategic"
+)
 
 ## Save feature differences
-features_df = pd.concat([df[["label", "polarity", "flip_non_strategic", "flip_strategic"]], ns_diff, s_diff], axis=1)
+features_df = pd.concat([
+    df[["label", "polarity", "flip_ns_8b", "flip_s_8b", "flip_ns_70b", "flip_s_70b"]],
+    ns_8b_diff, s_8b_diff, ns_70b_diff, s_70b_diff
+], axis=1)
 features_df.to_csv("../data/linguistic_features.csv", index=False)

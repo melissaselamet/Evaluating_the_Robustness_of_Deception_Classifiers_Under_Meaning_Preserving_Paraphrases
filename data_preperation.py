@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 SEED = 11
-path = 'deceptive-opinion.csv'
+path = 'data/deceptive-opinion.csv'
 
 # Load the dataset and keep only the needed columns
 data = pd.read_csv(path)
