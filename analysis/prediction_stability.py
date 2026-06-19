@@ -85,7 +85,7 @@ def run_mcnemar(flip_a, flip_b, label_a, label_b):
     table  = np.array([[a, b], [c, d]])
     result = mcnemar(table, exact=False)
 
-    # Odds ratio as effect size for McNemar (b/c)
+    # Odds ratio as effect size for McNemar (b/ c)
     odds_ratio = b / c if c > 0 else float('inf')
 
     print(f"\n  {label_a} vs {label_b}:")

@@ -10,7 +10,7 @@ from transformers import get_linear_schedule_with_warmup
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import classification_report, confusion_matrix
 
-# Load the train and test datasets from data_preperation.py
+# Load train and test datasets from data_preperation.py
 train_data = pd.read_csv("data/train_set.csv")
 test_data = pd.read_csv("data/test_set.csv")
 
@@ -173,7 +173,7 @@ for fold, (train_idx, val_idx) in enumerate(skf.split(texts, labels), 1):
     del fold_model
     torch.cuda.empty_cache() if torch.cuda.is_available() else None
 
-# Summarize CV results
+# Summarize the CV results
 print("\nCross-Validation Results")
 metrics = ["precision", "recall", "f1-score"]
 classes = ["Truthful", "Deceptive", "macro avg"]

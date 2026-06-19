@@ -108,7 +108,7 @@ print(f"  8B  strategic AUC:     {roc_auc_score(true_labels, df['prob1_s_8b']):.
 print(f"  70B non-strategic AUC: {roc_auc_score(true_labels, df['prob1_ns_70b']):.4f}")
 print(f"  70B strategic AUC:     {roc_auc_score(true_labels, df['prob1_s_70b']):.4f}")
 
-# Confidence shifts (always relative to original predicted class)
+# Confidence shifts (relative to original predicted class)
 print(f"\nConfidence Shifts (M, SD):")
 for prob0_col, prob1_col, name in [
     ("prob0_ns_8b",  "prob1_ns_8b",  "8B  non-strategic"),

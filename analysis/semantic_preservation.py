@@ -1,7 +1,7 @@
 import pandas as pd
 from scipy.stats import pointbiserialr, ttest_ind
 
-# Load results
+# Load results from previous
 df = pd.read_csv("../data/results.csv")
 
 ## Compute flip indicators

@@ -21,7 +21,7 @@ s_8b_liwc   = pd.read_csv("../data/liwc_s_8b.csv")[theory_features]
 ns_70b_liwc = pd.read_csv("../data/liwc_ns_70b.csv")[theory_features]
 s_70b_liwc  = pd.read_csv("../data/liwc_s_70b.csv")[theory_features]
 
-## Load results for flip indicators and metadata
+## Load the results for flip indicators and metadata
 df = pd.read_csv("../data/results.csv")
 df["flip_ns_8b"]  = (df["pred_original"] != df["pred_non_strategic_8b"]).astype(int)
 df["flip_s_8b"]   = (df["pred_original"] != df["pred_strategic_8b"]).astype(int)

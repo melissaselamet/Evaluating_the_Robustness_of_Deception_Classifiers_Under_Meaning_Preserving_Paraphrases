@@ -24,7 +24,7 @@ print(f"  no conditions flipped:        {len(none_flipped)}")
 print(f"  8B strategic only:            {len(s_only)}")
 print(f"  8B non-strategic only:        {len(ns_only)}")
 
-## print example function
+## Print example function
 def print_example(row, case_description):
     print(f"\n{'='*70}")
     print(f"case: {case_description}")

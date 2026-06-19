@@ -7,7 +7,7 @@ import os
 from huggingface_hub import InferenceClient
 from bert_score import BERTScorer
 
-# Configurations
+# Configurations:
 SEED = 11
 ollama_url = "http://localhost:11434/api/generate"
 ollama_model = "llama3.1:8b"
