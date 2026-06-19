@@ -216,7 +216,7 @@ model = train_model(model, train_loader)
 # Evaluate final model on held-out test set
 all_preds, all_labels, all_confidences = evaluate_model(model, test_loader)
 
-print("\n=== Final Model Test Set Performance ===")
+print("\nFinal Model Test Set Performance")
 print(classification_report(all_labels, all_preds, target_names=["Truthful", "Deceptive"]))
 print(confusion_matrix(all_labels, all_preds))
 
